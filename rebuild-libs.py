@@ -76,6 +76,11 @@ work_folder = "work"
 SDL2_filebase = "SDL2-2.28.2"
 SDL2_urlbase = "https://www.libsdl.org/release/" + SDL2_filebase
 
+SDL3_filebase = "SDL3"
+SDL3_urlbase = "https://github.com/libsdl-org/SDL/archive/refs/heads/main"
+SDL3_filebase_windows = "SDL3-2024-08-18"
+SDL3_urlbase_windows = "https://github.com/mmozeiko/build-sdl3/releases/download/2024-08-18/SDL3-2024-08-18"
+
 glm_filebase = "glm-0.9.9.8"
 glm_urlbase = "https://github.com/g-truc/glm/releases/download/0.9.9.8/" + glm_filebase
 
@@ -298,6 +303,105 @@ def build_SDL2():
 		shutil.copy(SDL2_dir + "/out/lib/libSDL2main.a", target + variant + "/SDL2/lib/")
 		shutil.copytree(SDL2_dir + "/out/include/SDL2/", target + variant + "/SDL2/include/SDL2/")
 	shutil.copy(SDL2_dir + "/README-SDL.txt", target + variant + "/SDL2/dist/")
+
+def build_SDL3():
+	SDL3_dir = work_folder + "/" + SDL3_filebase
+
+	print("Cleaning any existing SDL3...")
+	remove_if_exists(SDL3_dir)
+	remove_if_exists(target + "/SDL3/")
+
+	print("Fetching SDL3...")
+	if target == 'windows':
+		fetch_file(SDL3_urlbase_windows + ".zip", work_folder + "/" + SDL3_filebase + ".zip")
+		unzip_file(work_folder + "/" + SDL3_filebase + ".zip", work_folder)
+	else:
+		fetch_file(SDL3_urlbase + ".zip", work_folder + "/" + SDL3_filebase + ".zip")
+		unzip_file(work_folder + "/" + SDL3_filebase + ".zip", work_folder)
+		os.rename(work_folder + "/SDL-main", SDL3_dir)
+
+	print("Building SDL3...")
+	if target != 'windows':
+		os.mkdir(SDL3_dir + '/build')
+		env = os.environ.copy()
+		prefix = os.getcwd() + '/' + SDL3_dir + '/out'
+		if target == 'macos':
+			run_command(['cmake',
+				'-DCMAKE_OSX_ARCHITECTURES=x86_64;arm64',
+				'-DCMAKE_OSX_DEPLOYMENT_TARGET=11',
+				'-DCMAKE_BUILD_TYPE=Release', 
+				'--install-prefix=' + prefix,
+				'..',
+				'-DSDL_STATIC=ON',
+				'-DSDL_SHARED=OFF',
+				'-DSDL_RENDER=OFF',
+				'-DSDL_HAPTIC=OFF',
+				'-DSDL_POWER=OFF',
+				'-DSDL_SENSOR=OFF',
+				'-DSDL_HIDAPI=ON',
+				'-DSDL_SSE2=ON',
+				'-DSDL_OSS=ON',
+				'-DSDL_ALSA=ON',
+				'-DSDL_PULSEAUDIO=OFF',
+				'-DSDL_DISKAUDIO=OFF',
+				'-DSDL_DUMMYAUDIO=OFF',
+				'-DSDL_X11=ON',
+				'-DSDL_COCOA=OFF',
+				'-DSDL_VULKAN=OFF',
+				'-DSDL_DUMMYVIDEO=OFF',
+				'-DSDL_OPENGL=ON',
+				'-DSDL_OPENGLES=OFF',
+				'-DSDL_PTHREADS=ON',
+				'-DSDL_PTHREADS_SEM=ON', 
+				'-DSDL_DIRECTX=OFF', 
+				'-DSDL_RENDER=OFF',
+				'-DSDL_DUMMYCAMERA=OFF',
+				'-DSDL_CAMERA=OFF',
+				'-DSDL_DIALOG=OFF', 
+				'-DSDL_COCOA=ON'
+				], cwd=SDL3_dir + '/build')
+		else:
+			run_command(['cmake',
+				'-DCMAKE_BUILD_TYPE=Release', 
+				'--install-prefix=' + prefix,
+				'..',
+				'-DSDL_STATIC=ON',
+				'-DSDL_SHARED=OFF',
+				'-DSDL_RENDER=OFF',
+				'-DSDL_HAPTIC=OFF',
+				'-DSDL_POWER=OFF',
+				'-DSDL_SENSOR=OFF',
+				'-DSDL_HIDAPI=ON',
+				'-DSDL_SSE2=ON',
+				'-DSDL_OSS=OFF',
+				'-DSDL_ALSA=ON',
+				'-DSDL_PULSEAUDIO=OFF',
+				'-DSDL_DISKAUDIO=OFF',
+				'-DSDL_DUMMYAUDIO=OFF',
+				'-DSDL_X11=ON',
+				'-DSDL_COCOA=OFF',
+				'-DSDL_VULKAN=OFF',
+				'-DSDL_DUMMYVIDEO=OFF',
+				'-DSDL_OPENGL=ON',
+				'-DSDL_OPENGLES=OFF',
+				'-DSDL_PTHREADS=ON',
+				'-DSDL_PTHREADS_SEM=ON', 
+				'-DSDL_DIRECTX=OFF', 
+				'-DSDL_RENDER=OFF',
+				'-DSDL_DUMMYCAMERA=OFF',
+				'-DSDL_CAMERA=OFF',
+				'-DSDL_DIALOG=OFF',
+				'-DSDL_DLOPEN=ON'
+				], cwd=SDL3_dir + '/build')
+		run_command(['cmake', '--build', '.', '--config', 'Release', '--parallel'], cwd=SDL3_dir + '/build')
+		run_command(['sudo', 'cmake', '--install', '.', '--config Release'], cwd=SDL3_dir + '/build')
+
+	print("Copying SDL3 files...")
+	if target == 'windows':
+		shutil.copytree(SDL3_dir, target + "/SDL3")
+	else:
+		shutil.copytree(SDL3_dir + "/out", target + "/SDL3")
+
 
 
 def build_glm():
@@ -1176,6 +1280,9 @@ if "harfbuzz" in to_build:
 if "SDL2" in to_build:
 	for variant in variants:
 		build_SDL2()
+
+if "SDL3" in to_build:
+	build_SDL3()
 
 if "glm" in to_build:
 	for variant in variants:
